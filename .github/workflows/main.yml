@@ -1,0 +1,50 @@
+name: Deploy Laravel Project
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Устанавливаем зависимости PHP и Node
+      - name: Install PHP dependencies
+        run: composer install --no-dev --optimize-autoloader
+
+      - name: Build front-end
+        run: |
+          npm ci
+          npm run build
+
+      # Загружаем файлы на сервер через rsync
+      - name: Deploy files to server
+        uses: burnett01/rsync-deployments@5.2
+        with:
+          switches: -avzr --delete --exclude='/.env'
+          path: ./
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_KEY }}
+
+      # Запускаем команды на сервере
+      - name: Run Laravel commands on server
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            export COMPOSER_ALLOW_SUPERUSER=1
+            composer install --no-dev --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            sudo supervisorctl restart laravel-reverb || sudo supervisorctl start laravel-reverb
+            sudo supervisorctl restart laravel-queue || sudo supervisorctl start laravel-queue
