@@ -12,15 +12,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Устанавливаем зависимости PHP и Node
-      - name: Install PHP dependencies
-        run: composer install --no-dev --optimize-autoloader
-
-      - name: Build front-end
-        run: |
-          npm ci
-          npm run build
-
       # Загружаем файлы на сервер через rsync
       - name: Deploy files to server
         uses: burnett01/rsync-deployments@5.2
@@ -43,8 +34,5 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
             export COMPOSER_ALLOW_SUPERUSER=1
             composer install --no-dev --optimize-autoloader
-            php artisan migrate --force
             php artisan config:cache
-            php artisan route:cache
-            sudo supervisorctl restart laravel-reverb || sudo supervisorctl start laravel-reverb
             sudo supervisorctl restart laravel-queue || sudo supervisorctl start laravel-queue

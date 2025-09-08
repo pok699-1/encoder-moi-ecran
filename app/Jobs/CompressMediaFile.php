@@ -3,8 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\MediaFile;
-use App\Services\MediaService;
-use Illuminate\Support\Facades\Log;
+use App\Services\MediaCompressor;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -30,11 +29,11 @@ class CompressMediaFile implements ShouldQueue
     {
         $mediaFile = MediaFile::find($this->mediaFileId);
 
-        if (!$mediaFile) {
+        if (!$mediaFile || $mediaFile->is_processed) {
             return;
         }
 
-        $result = MediaService::compress($mediaFile->path, $mediaFile->path);
+        $result = MediaCompressor::compress($mediaFile->path, $mediaFile->path);
 
         if ($result === false) {
             echo "Ошибка при сжатии";
